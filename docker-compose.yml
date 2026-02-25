@@ -1,15 +1,37 @@
 services:
+  devproxy-server:
+    build:
+      context: ./src
+      dockerfile: DevProxy.Server/Dockerfile
+    container_name: devproxy-server
+    restart: unless-stopped
+    ports:
+      - "${DEVPROXY_SERVER_PORT:-8080}:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
   devproxy-client:
     build:
       context: ./src
       dockerfile: DevProxy.Client/Dockerfile
     container_name: devproxy-client
     restart: unless-stopped
+    depends_on:
+      devproxy-server:
+        condition: service_healthy
     command:
-      - "--server=${DEVPROXY_SERVER}"
+      - "--server=${DEVPROXY_SERVER:-http://devproxy-server:8080}"
       - "--id=${DEVPROXY_CLIENT_ID}"
       - "--local=${DEVPROXY_LOCAL_URL}"
     environment:
       - DOTNET_ENVIRONMENT=Production
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    profiles:
+      - client

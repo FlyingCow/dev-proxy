@@ -108,32 +108,45 @@ curl http://localhost:5000/mydev/api/your-endpoint
 
 ## Running with Docker
 
-### Quick Start
+### Quick Start - Server Only
 
 1. Copy the example environment file:
    ```bash
    cp .env.example .env
    ```
 
-2. Edit `.env` with your configuration:
-   ```bash
-   DEVPROXY_SERVER=https://proxy.example.com
-   DEVPROXY_CLIENT_ID=my-dev-machine
-   DEVPROXY_LOCAL_URL=http://host.docker.internal:5000
-   ```
-
-3. Start the client:
+2. Start the server:
    ```bash
    docker compose up -d
    ```
 
+3. Verify the server is running:
+   ```bash
+   curl http://localhost:8080/health
+   ```
+
+### Running Server and Client Together
+
+To run both server and client in Docker:
+
+```bash
+# Configure client settings in .env
+DEVPROXY_SERVER=http://devproxy-server:8080
+DEVPROXY_CLIENT_ID=my-dev-machine
+DEVPROXY_LOCAL_URL=http://host.docker.internal:5000
+
+# Start both server and client
+docker compose --profile client up -d
+```
+
 ### Environment Variables
 
-| Variable | Description | Example |
+| Variable | Description | Default |
 |----------|-------------|---------|
-| `DEVPROXY_SERVER` | Proxy server URL | `https://proxy.example.com` |
-| `DEVPROXY_CLIENT_ID` | Unique client ID for this tunnel | `my-dev-machine` |
-| `DEVPROXY_LOCAL_URL` | Local service URL to forward requests to | `http://host.docker.internal:5000` |
+| `DEVPROXY_SERVER_PORT` | Port to expose the server | `8080` |
+| `DEVPROXY_SERVER` | Proxy server URL (for client) | `http://devproxy-server:8080` |
+| `DEVPROXY_CLIENT_ID` | Unique client ID for tunnel | - |
+| `DEVPROXY_LOCAL_URL` | Local service URL to forward to | - |
 
 ### Accessing Host Services
 
@@ -146,28 +159,42 @@ DEVPROXY_LOCAL_URL=http://host.docker.internal:3000
 ### Docker Commands
 
 ```bash
-# Start the client
+# Start server only
 docker compose up -d
+
+# Start server and client
+docker compose --profile client up -d
 
 # View logs
 docker compose logs -f
 
-# Stop the client
-docker compose down
+# View specific service logs
+docker compose logs -f devproxy-server
+docker compose logs -f devproxy-client
+
+# Stop all services
+docker compose --profile client down
 
 # Rebuild after code changes
 docker compose up -d --build
+
+# Rebuild with client profile
+docker compose --profile client up -d --build
 ```
 
-### Running with Inline Parameters
+### Connecting External Client to Dockerized Server
 
-You can also run without a `.env` file:
+If you want to run the server in Docker but the client natively:
 
 ```bash
-DEVPROXY_SERVER=https://proxy.example.com \
-DEVPROXY_CLIENT_ID=mydev \
-DEVPROXY_LOCAL_URL=http://host.docker.internal:8080 \
+# Start only the server
 docker compose up -d
+
+# Connect with native client
+dotnet run --project src/DevProxy.Client -- connect \
+  --server http://localhost:8080 \
+  --id mydev \
+  --local http://localhost:5000
 ```
 
 ## CLI Reference
