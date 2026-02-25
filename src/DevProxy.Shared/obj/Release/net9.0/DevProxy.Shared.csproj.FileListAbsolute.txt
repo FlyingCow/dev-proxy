@@ -1,0 +1,11 @@
+/home/max/dev/DevProxy/src/DevProxy.Shared/bin/Release/net9.0/DevProxy.Shared.deps.json
+/home/max/dev/DevProxy/src/DevProxy.Shared/bin/Release/net9.0/DevProxy.Shared.dll
+/home/max/dev/DevProxy/src/DevProxy.Shared/bin/Release/net9.0/DevProxy.Shared.pdb
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.GeneratedMSBuildEditorConfig.editorconfig
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.AssemblyInfoInputs.cache
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.AssemblyInfo.cs
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.csproj.CoreCompileInputs.cache
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.dll
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/refint/DevProxy.Shared.dll
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/DevProxy.Shared.pdb
+/home/max/dev/DevProxy/src/DevProxy.Shared/obj/Release/net9.0/ref/DevProxy.Shared.dll

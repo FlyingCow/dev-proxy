@@ -1,0 +1,15 @@
+services:
+  devproxy-client:
+    build:
+      context: ./src
+      dockerfile: DevProxy.Client/Dockerfile
+    container_name: devproxy-client
+    restart: unless-stopped
+    command:
+      - "--server=${DEVPROXY_SERVER}"
+      - "--id=${DEVPROXY_CLIENT_ID}"
+      - "--local=${DEVPROXY_LOCAL_URL}"
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
