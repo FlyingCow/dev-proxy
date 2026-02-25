@@ -1,0 +1,93 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+publish/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/packages/
+.nuget/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Test results
+[Tt]est[Rr]esult*/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# .NET
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET
+ScaffoldingReadMe.txt
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Docker
+.docker/
+*.tar
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.bak
+
+# Secrets (never commit these)
+*.pfx
+*.p12
+*.key
+*.pem
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json
+
+# Claude
+.claude/

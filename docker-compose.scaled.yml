@@ -1,0 +1,49 @@
+# Scaled deployment with multiple server instances and Redis
+# Usage: docker compose -f docker-compose.yml -f docker-compose.scaled.yml up -d
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: devproxy-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  devproxy-server:
+    # Remove container_name to allow multiple instances
+    container_name: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Redis=redis:6379
+    deploy:
+      replicas: ${DEVPROXY_SERVER_REPLICAS:-2}
+
+  # Load balancer for multiple server instances
+  nginx:
+    image: nginx:alpine
+    container_name: devproxy-lb
+    restart: unless-stopped
+    ports:
+      - "${DEVPROXY_SERVER_PORT:-8080}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - devproxy-server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  redis-data:

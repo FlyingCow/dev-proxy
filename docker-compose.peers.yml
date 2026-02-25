@@ -1,0 +1,72 @@
+# Peer-to-peer deployment without Redis
+# Servers communicate directly with each other
+# Usage: docker compose -f docker-compose.yml -f docker-compose.peers.yml up -d
+
+services:
+  devproxy-server-1:
+    build:
+      context: ./src
+      dockerfile: DevProxy.Server/Dockerfile
+    container_name: devproxy-server-1
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Peers__0=http://devproxy-server-2:8080
+      - Peers__1=http://devproxy-server-3:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  devproxy-server-2:
+    build:
+      context: ./src
+      dockerfile: DevProxy.Server/Dockerfile
+    container_name: devproxy-server-2
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Peers__0=http://devproxy-server-1:8080
+      - Peers__1=http://devproxy-server-3:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  devproxy-server-3:
+    build:
+      context: ./src
+      dockerfile: DevProxy.Server/Dockerfile
+    container_name: devproxy-server-3
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Peers__0=http://devproxy-server-1:8080
+      - Peers__1=http://devproxy-server-2:8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Load balancer
+  nginx:
+    image: nginx:alpine
+    container_name: devproxy-lb
+    restart: unless-stopped
+    ports:
+      - "${DEVPROXY_SERVER_PORT:-8080}:80"
+    volumes:
+      - ./nginx-peers.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      devproxy-server-1:
+        condition: service_healthy
+      devproxy-server-2:
+        condition: service_healthy
+      devproxy-server-3:
+        condition: service_healthy

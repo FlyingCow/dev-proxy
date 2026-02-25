@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+LICENSE
+*.md
+
+# IDE and editors
+.vs
+.vscode
+.idea
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+**/bin
+**/obj
+**/out
+**/publish
+
+# NuGet
+**/packages
+*.nupkg
+
+# Test results
+**/TestResults
+**/coverage
+
+# Docker
+**/Dockerfile*
+docker-compose*.yml
+.dockerignore
+nginx*.conf
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+**/logs
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
