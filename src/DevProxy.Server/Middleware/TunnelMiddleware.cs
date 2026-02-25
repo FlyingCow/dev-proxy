@@ -17,11 +17,14 @@ public class TunnelMiddleware
     public async Task InvokeAsync(
         HttpContext context,
         ClientConnectionManager connectionManager,
-        RequestForwarder requestForwarder)
+        RequestForwarder requestForwarder,
+        RedisBackplane redisBackplane,
+        PeerBackplane peerBackplane)
     {
         var path = context.Request.Path.Value ?? string.Empty;
 
-        if (path.StartsWith("/ws") || path.StartsWith("/health"))
+        // Skip internal endpoints, WebSocket, and health check
+        if (path.StartsWith("/ws") || path.StartsWith("/health") || path.StartsWith("/_internal"))
         {
             await _next(context);
             return;
@@ -35,8 +38,10 @@ public class TunnelMiddleware
         }
 
         var clientId = segments[0];
+        var isLocalClient = connectionManager.TryGetConnection(clientId, out _);
 
-        if (!connectionManager.TryGetConnection(clientId, out _))
+        // If not local and no backplane enabled, pass to next middleware
+        if (!isLocalClient && !redisBackplane.IsEnabled && !peerBackplane.IsEnabled)
         {
             await _next(context);
             return;
@@ -44,15 +49,15 @@ public class TunnelMiddleware
 
         var forwardPath = "/" + string.Join("/", segments.Skip(1));
 
-        _logger.LogDebug("Tunneling request for client '{ClientId}': {Method} {Path}",
-            clientId, context.Request.Method, forwardPath);
+        _logger.LogDebug("Tunneling request for client '{ClientId}' (local: {IsLocal}): {Method} {Path}",
+            clientId, isLocalClient, context.Request.Method, forwardPath);
 
         var headers = new Dictionary<string, string[]>();
         foreach (var (key, values) in context.Request.Headers)
         {
             if (!IsHopByHopHeader(key))
             {
-                headers[key] = values.ToArray();
+                headers[key] = values.ToArray()!;
             }
         }
 
@@ -74,12 +79,29 @@ public class TunnelMiddleware
             IsOutbound = false
         };
 
-        var response = await requestForwarder.ForwardRequestAsync(clientId, request, context.RequestAborted);
+        TunnelHttpResponseMessage? response = null;
+
+        if (isLocalClient)
+        {
+            // Client is on this instance - forward directly
+            response = await requestForwarder.ForwardRequestAsync(clientId, request, context.RequestAborted);
+        }
+        else if (redisBackplane.IsEnabled)
+        {
+            // Try Redis backplane first
+            response = await redisBackplane.ForwardRequestAsync(clientId, request, context.RequestAborted);
+        }
+
+        if (response == null && peerBackplane.IsEnabled)
+        {
+            // Try direct peer-to-peer communication
+            response = await peerBackplane.ForwardRequestAsync(clientId, request, context.RequestAborted);
+        }
 
         if (response == null)
         {
-            context.Response.StatusCode = 502;
-            await context.Response.WriteAsync("Client not available");
+            // Client not found anywhere - pass to next middleware
+            await _next(context);
             return;
         }
 

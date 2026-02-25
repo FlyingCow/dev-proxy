@@ -12,15 +12,18 @@ namespace DevProxy.Server.Controllers;
 public class TunnelController : ControllerBase
 {
     private readonly ClientConnectionManager _connectionManager;
+    private readonly RedisBackplane _redisBackplane;
     private readonly OutboundProxyService _outboundProxyService;
     private readonly ILogger<TunnelController> _logger;
 
     public TunnelController(
         ClientConnectionManager connectionManager,
+        RedisBackplane redisBackplane,
         OutboundProxyService outboundProxyService,
         ILogger<TunnelController> logger)
     {
         _connectionManager = connectionManager;
+        _redisBackplane = redisBackplane;
         _outboundProxyService = outboundProxyService;
         _logger = logger;
     }
@@ -67,6 +70,8 @@ public class TunnelController : ControllerBase
                 return;
             }
 
+            await _redisBackplane.RegisterClientAsync(clientId);
+
             var registeredResponse = new ControlMessage
             {
                 Action = ControlAction.Registered,
@@ -92,6 +97,7 @@ public class TunnelController : ControllerBase
         {
             if (clientId != null)
             {
+                await _redisBackplane.UnregisterClientAsync(clientId);
                 _connectionManager.Unregister(clientId);
                 _logger.LogInformation("Client '{ClientId}' disconnected", clientId);
             }
@@ -105,8 +111,6 @@ public class TunnelController : ControllerBase
 
     private async Task ProcessMessagesAsync(WebSocket webSocket, ClientConnection connection)
     {
-        var buffer = new byte[64 * 1024];
-
         while (webSocket.State == WebSocketState.Open)
         {
             var message = await ReceiveMessageAsync(webSocket, connection.CancellationTokenSource.Token);

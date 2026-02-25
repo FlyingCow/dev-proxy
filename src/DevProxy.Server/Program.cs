@@ -5,9 +5,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddSingleton<ClientConnectionManager>();
+builder.Services.AddSingleton<RedisBackplane>();
+builder.Services.AddSingleton<PeerBackplane>();
 builder.Services.AddScoped<RequestForwarder>();
 builder.Services.AddScoped<OutboundProxyService>();
 builder.Services.AddHttpClient("OutboundProxy");
+builder.Services.AddHttpClient("PeerBackplane");
 
 // Support both IIS and Windows Service hosting
 builder.Host.UseWindowsService();

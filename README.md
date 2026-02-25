@@ -290,6 +290,134 @@ curl https://proxy.example.com/health
 {"status":"healthy"}
 ```
 
+## Horizontal Scaling
+
+The server supports horizontal scaling with multiple instances behind a load balancer. Two backplane options are available:
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Redis** | Efficient pub/sub, scales well | Requires Redis infrastructure |
+| **Peer-to-Peer** | No external dependencies | Each server queries all peers |
+
+### Architecture
+
+```
+                                    ┌─────────────────┐
+                                    │  Load Balancer  │
+                                    │     (nginx)     │
+                                    └────────┬────────┘
+                           ┌─────────────────┼─────────────────┐
+                           ▼                 ▼                 ▼
+                    ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+                    │  Server 1   │◄─►│  Server 2   │◄─►│  Server N   │
+                    └──────┬──────┘   └──────┬──────┘   └──────┬──────┘
+                           │                 │                 │
+                           └─────────────────┴─────────────────┘
+                                             │
+                              ┌──────────────┴──────────────┐
+                              ▼                             ▼
+                    ┌─────────────────┐           ┌─────────────────┐
+                    │      Redis      │    OR     │  Direct HTTP    │
+                    │   (optional)    │           │  (peer-to-peer) │
+                    └─────────────────┘           └─────────────────┘
+```
+
+### Option 1: Redis Backplane
+
+Best for larger deployments with many server instances.
+
+**Quick Start:**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.scaled.yml up -d
+```
+
+**Configuration:**
+```json
+{
+  "ConnectionStrings": {
+    "Redis": "localhost:6379"
+  }
+}
+```
+
+**Or via environment variable:**
+```bash
+ConnectionStrings__Redis=redis-server:6379
+```
+
+### Option 2: Peer-to-Peer (No Redis)
+
+Servers communicate directly via HTTP. Best for smaller clusters (2-5 servers).
+
+**Quick Start:**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.peers.yml up -d
+```
+
+**Configuration:**
+```json
+{
+  "Peers": [
+    "http://server2:8080",
+    "http://server3:8080"
+  ]
+}
+```
+
+**Or via environment variables:**
+```bash
+Peers__0=http://server2:8080
+Peers__1=http://server3:8080
+```
+
+### How It Works
+
+1. Request arrives at any server instance via load balancer
+2. Server checks if the client is connected locally
+3. If not local:
+   - **Redis mode**: Queries Redis for client location, forwards via pub/sub
+   - **Peer mode**: Queries all peers in parallel via HTTP
+4. The owning server forwards to the client and returns the response
+
+### Load Balancer Requirements
+
+When using a load balancer (nginx, HAProxy, etc.):
+
+1. **WebSocket Support**: Must support WebSocket connections with proper upgrade headers
+2. **Health Checks**: Use `/health` endpoint for backend health checks
+3. **Sticky Sessions (Optional)**: Not required with Redis backplane, but can reduce cross-instance traffic
+
+**Example nginx configuration:**
+```nginx
+upstream devproxy_servers {
+    server server1:8080;
+    server server2:8080;
+}
+
+server {
+    listen 80;
+
+    location / {
+        proxy_pass http://devproxy_servers;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+### IIS with ARR (Application Request Routing)
+
+For IIS-based load balancing:
+
+1. Install ARR on your IIS server
+2. Create a Server Farm with your backend servers
+3. Configure health checks to use `/health`
+4. Enable WebSocket support in ARR settings
+5. Set the Redis connection string on all backend servers
+
 ## Request Flow
 
 ### Inbound (External → Dev Machine)
@@ -332,7 +460,11 @@ Messages are JSON-serialized and sent over WebSocket:
       "Microsoft.AspNetCore": "Warning"
     }
   },
-  "AllowedHosts": "*"
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "Redis": ""
+  },
+  "Peers": []
 }
 ```
 
@@ -342,6 +474,8 @@ Messages are JSON-serialized and sent over WebSocket:
 |----------|-------------|
 | `ASPNETCORE_ENVIRONMENT` | Set to `Development` or `Production` |
 | `ASPNETCORE_URLS` | Override default URLs (e.g., `http://+:5080`) |
+| `ConnectionStrings__Redis` | Redis connection string for horizontal scaling |
+| `Peers__0`, `Peers__1`, ... | Peer server URLs for direct communication |
 
 ## Troubleshooting
 
